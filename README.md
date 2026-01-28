@@ -6,7 +6,7 @@
 
 - AWS 账号及配置好的 CLI 凭证
 - Docker
-- Python 3.9+ 及依赖（`pip install -r requirements.txt`）
+- Python 3.10+ 及依赖（`pip install -r requirements.txt`）
 - SageMaker 执行角色（见下方创建说明）
 - ml.g6e.2xlarge endpoint 配额（需申请）
 
