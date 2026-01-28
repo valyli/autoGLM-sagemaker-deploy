@@ -6,9 +6,50 @@
 
 - AWS 账号及配置好的 CLI 凭证
 - Docker
-- Python 3.9+ 及 boto3, sagemaker SDK
-- SageMaker 执行角色（如 `SageMakerExecutionRole`）
+- Python 3.9+ 及 boto3, sagemaker, huggingface_hub SDK
+- SageMaker 执行角色（见下方创建说明）
 - ml.g6e.2xlarge endpoint 配额（需申请）
+
+### 创建 SageMaker 执行角色
+
+如果没有 SageMaker 执行角色，运行以下命令创建：
+
+```bash
+# 创建信任策略文件
+cat > trust-policy.json << 'EOF'
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {"Service": "sagemaker.amazonaws.com"},
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+
+# 创建角色
+aws iam create-role \
+  --role-name SageMakerExecutionRole \
+  --assume-role-policy-document file://trust-policy.json
+
+# 附加必要策略
+aws iam attach-role-policy \
+  --role-name SageMakerExecutionRole \
+  --policy-arn arn:aws:iam::aws:policy/AmazonSageMakerFullAccess
+
+aws iam attach-role-policy \
+  --role-name SageMakerExecutionRole \
+  --policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess
+
+aws iam attach-role-policy \
+  --role-name SageMakerExecutionRole \
+  --policy-arn arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+
+# 清理临时文件
+rm trust-policy.json
+```
 
 ## 快速开始
 
