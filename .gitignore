@@ -1,0 +1,6 @@
+# 运行时生成的文件
+model/
+config.json
+model_download_info.json
+__pycache__/
+*.pyc
