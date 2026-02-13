@@ -53,6 +53,14 @@ rm trust-policy.json
 
 ## 快速开始
 
+### 方式一：一键自动部署（推荐）
+
+```bash
+./install.sh
+```
+
+### 方式二：手动分步部署
+
 ```bash
 # 1. 构建容器镜像并推送到 ECR
 ./0_build_and_push.sh
@@ -69,11 +77,35 @@ python 3_deploy.py
 
 ## 配置
 
-设置 AWS 区域（默认 us-east-2）：
+编辑 `deploy.config` 文件自定义部署参数：
 
 ```bash
-export AWS_REGION=us-east-2
+# 模型选择
+MODEL_ID=zai-org/AutoGLM-Phone-9B  # 或 AutoGLM-Phone-9B-Multilingual
+
+# AWS 区域
+AWS_REGION=us-west-2
+
+# 实例类型（根据配额选择）
+INSTANCE_TYPE=ml.g6e.2xlarge  # 或 ml.g6e.xlarge, ml.g5.2xlarge
 ```
+
+或使用环境变量：
+
+```bash
+export MODEL_ID=zai-org/AutoGLM-Phone-9B-Multilingual
+export INSTANCE_TYPE=ml.g6e.xlarge
+./install.sh
+```
+
+### 实例类型对比
+
+| 实例类型 | GPU | 显存 | 成本/小时 | 适用场景 |
+|---------|-----|------|----------|----------|
+| ml.g6e.xlarge | L40S | 24GB | $0.503 | 最小配置 |
+| ml.g6e.2xlarge | L40S | 48GB | $1.006 | 推荐 |
+| ml.g5.xlarge | A10G | 24GB | $1.006 | 备选 |
+| ml.g5.2xlarge | A10G | 24GB | $1.515 | 高性能 |
 
 ## 部署信息
 
@@ -90,7 +122,7 @@ export AWS_REGION=us-east-2
 import boto3
 import json
 
-client = boto3.client('sagemaker-runtime', region_name='us-east-2')
+client = boto3.client('sagemaker-runtime', region_name='us-west-2')
 response = client.invoke_endpoint(
     EndpointName='autoglm-phone-9b-XXXXXXXX-XXXXXX',  # 替换为实际名称
     ContentType='application/json',
@@ -106,6 +138,8 @@ print(json.loads(response['Body'].read()))
 
 | 文件 | 说明 |
 |-----|------|
+| `deploy.config` | 部署配置文件（模型/实例选择） |
+| `install.sh` | 一键自动部署脚本 |
 | `0_build_and_push.sh` | 构建并推送 Docker 镜像到 ECR |
 | `1_download_model.py` | 从 HuggingFace 下载模型 |
 | `2_upload_model.py` | 上传未压缩模型到 S3 |
