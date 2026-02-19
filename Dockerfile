@@ -5,7 +5,8 @@ FROM --platform=linux/amd64 vllm/vllm-openai:v0.14.1
 ENV HF_HOME=/tmp/hf_home
 ENV VLLM_WORKER_MULTIPROC_METHOD=spawn
 
-RUN pip install --no-cache-dir httpx uvicorn fastapi
+# Upgrade transformers to 5.0.0+ as required by AutoGLM
+RUN pip install --no-cache-dir transformers>=5.0.0rc0 httpx uvicorn fastapi
 
 COPY code/model.py /opt/ml/code/model.py
 

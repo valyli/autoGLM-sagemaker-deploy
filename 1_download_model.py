@@ -5,20 +5,16 @@ import json
 from huggingface_hub import snapshot_download
 from datetime import datetime
 
-# 从配置文件读取
 def load_config():
-    config = {'MODEL_ID': 'zai-org/AutoGLM-Phone-9B'}
-    if os.path.exists('deploy.config'):
-        with open('deploy.config') as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith('#') and '=' in line:
-                    key, value = line.split('=', 1)
-                    config[key.strip()] = value.strip()
-    return os.environ.get('MODEL_ID', config['MODEL_ID'])
+    config_file = 'deploy_vars.json'
+    if os.path.exists(config_file):
+        with open(config_file) as f:
+            return json.load(f)
+    return {'MODEL_ID': 'zai-org/AutoGLM-Phone-9B'}
 
-MODEL_ID = load_config()
-LOCAL_DIR = "model"
+config = load_config()
+MODEL_ID = config['MODEL_ID']
+LOCAL_DIR = os.environ.get('LOCAL_DIR', 'model')
 
 def main():
     print(f"下载模型: {MODEL_ID}")

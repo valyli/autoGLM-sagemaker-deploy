@@ -9,19 +9,20 @@ from concurrent.futures import ThreadPoolExecutor
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 
 def load_config():
-    config = {'AWS_REGION': 'us-west-2'}
-    if os.path.exists('deploy.config'):
-        with open('deploy.config') as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith('#') and '=' in line:
-                    key, value = line.split('=', 1)
-                    config[key.strip()] = value.strip()
-    return os.environ.get('AWS_REGION', config['AWS_REGION'])
+    config_file = 'deploy_vars.json'
+    if os.path.exists(config_file):
+        with open(config_file) as f:
+            return json.load(f)
+    return {'AWS_REGION': 'us-west-2', 'MODEL_ID': 'unknown-model'}
 
-REGION = load_config()
-LOCAL_MODEL_DIR = "model"
-S3_PREFIX = "models/autoglm-phone-9b-uncompressed"
+config = load_config()
+REGION = config['AWS_REGION']
+MODEL_ID = config['MODEL_ID']
+LOCAL_MODEL_DIR = os.environ.get('LOCAL_MODEL_DIR', 'model')
+
+# 从 MODEL_ID 生成唯一的 S3 前缀
+model_name = MODEL_ID.split('/')[-1].lower().replace('_', '-')
+S3_PREFIX = f"models/{model_name}"
 
 uploaded_count = 0
 total_files = 0
@@ -30,6 +31,19 @@ def upload_file(args):
     global uploaded_count
     s3_client, bucket, local_path, s3_key = args
     try:
+        # 检查文件是否已存在且大小一致
+        local_size = os.path.getsize(local_path)
+        try:
+            response = s3_client.head_object(Bucket=bucket, Key=s3_key)
+            s3_size = response['ContentLength']
+            if s3_size == local_size:
+                uploaded_count += 1
+                if uploaded_count % 10 == 0:
+                    print(f"  已验证: {uploaded_count}/{total_files}")
+                return s3_key
+        except:
+            pass  # 文件不存在，需要上传
+        
         s3_client.upload_file(local_path, bucket, s3_key)
         uploaded_count += 1
         if uploaded_count % 10 == 0:
@@ -79,6 +93,7 @@ def main():
     
     global total_files
     total_files = len(files)
+    print(f"📦 模型: {MODEL_ID}")
     print(f"⏳ 上传 {total_files} 个文件到 s3://{bucket}/{S3_PREFIX}/")
     
     # 并行上传

@@ -1,7 +1,9 @@
-"""AutoGLM-Phone-9B Inference Handler for SageMaker"""
+"""Universal vLLM Inference Handler for SageMaker"""
 
 import subprocess
 import time
+import os
+import json
 from contextlib import asynccontextmanager
 
 import httpx
@@ -11,35 +13,52 @@ import uvicorn
 
 vllm_process = None
 
+# 从环境变量读取配置（由 SageMaker 传入）
+SERVED_MODEL_NAME = os.environ.get('SERVED_MODEL_NAME', 'model')
+MAX_MODEL_LEN = os.environ.get('MAX_MODEL_LEN', '4096')
+DTYPE = os.environ.get('DTYPE', 'auto')
+MODEL_TYPE = os.environ.get('MODEL_TYPE', 'text')  # text, multimodal
+
 
 def start_vllm_server() -> bool:
-    """Start vLLM server with official AutoGLM parameters"""
+    """Start vLLM server with configurable parameters"""
     global vllm_process
     
     model_path = "/opt/ml/model"
     
-    # Official vLLM parameters from AutoGLM README (removed trust-remote-code)
+    # 基础参数（所有模型通用）
     cmd = [
         "python3", "-m", "vllm.entrypoints.openai.api_server",
         "--model", model_path,
-        "--served-model-name", "autoglm-phone-9b",
-        "--max-model-len", "25480",
-        "--dtype", "bfloat16",
-        "--allowed-local-media-path", "/",
-        "--mm-encoder-tp-mode", "data",
-        "--mm-processor-cache-type", "shm",
-        "--mm-processor-kwargs", '{"max_pixels": 5000000}',
-        "--chat-template-content-format", "string",
-        "--limit-mm-per-prompt", '{"image": 10}',
+        "--served-model-name", SERVED_MODEL_NAME,
+        "--max-model-len", MAX_MODEL_LEN,
+        "--dtype", DTYPE,
+        "--trust-remote-code",
         "--host", "127.0.0.1",
         "--port", "8000",
     ]
     
-    import os
+    # 多模态参数（仅当 MODEL_TYPE=multimodal 时添加）
+    if MODEL_TYPE == 'multimodal':
+        cmd.extend([
+            "--allowed-local-media-path", "/",
+            "--mm-encoder-tp-mode", "data",
+            "--mm-processor-cache-type", "shm",
+            "--mm-processor-kwargs", '{"max_pixels": 5000000}',
+            "--chat-template-content-format", "string",
+            "--limit-mm-per-prompt", '{"image": 10}',
+        ])
+    
     env = os.environ.copy()
     env["VLLM_WORKER_MULTIPROC_METHOD"] = "spawn"
     
-    print(f"Starting vLLM server: {' '.join(cmd)}")
+    print(f"Starting vLLM server with config:")
+    print(f"  Model Name: {SERVED_MODEL_NAME}")
+    print(f"  Max Length: {MAX_MODEL_LEN}")
+    print(f"  Data Type: {DTYPE}")
+    print(f"  Model Type: {MODEL_TYPE}")
+    print(f"Command: {' '.join(cmd)}")
+    
     vllm_process = subprocess.Popen(cmd, env=env)
     
     for _ in range(120):
@@ -67,7 +86,7 @@ async def lifespan(app: FastAPI):
         vllm_process.terminate()
 
 
-app = FastAPI(title="AutoGLM vLLM Inference Server", lifespan=lifespan)
+app = FastAPI(title="Universal vLLM Inference Server", lifespan=lifespan)
 
 
 @app.get("/ping")

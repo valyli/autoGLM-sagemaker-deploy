@@ -1,11 +1,17 @@
 # 模型文件
 model/
+models/
 *.safetensors
 *.bin
 
-# 配置文件（包含敏感信息）
+# 临时文件
+.tmp/
 config.json
 model_download_info.json
+
+# 配置目录（保留 .gitkeep）
+configs/*
+!configs/.gitkeep
 
 # AWS 凭证
 *.pem
